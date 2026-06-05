@@ -73,6 +73,9 @@ export default function OTPModal({ onVerified, onClose }: Props) {
 
     // Production — real Firebase Phone Auth
     try {
+      // Always create a fresh verifier — reusing a failed one causes 400s
+      recaptchaRef.current?.clear();
+      recaptchaRef.current = null;
       const verifier = setupRecaptcha();
       await verifier.render();
       const result = await signInWithPhoneNumber(auth, `+91${cleaned}`, verifier);
