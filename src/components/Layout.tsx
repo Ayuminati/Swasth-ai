@@ -20,6 +20,8 @@ export default function Layout() {
       <BottomNav />
       <AboutModal />
       <SOSButton />
+      {/* reCAPTCHA mount point — must live outside any modal/backdrop/blur */}
+      <div id="recaptcha-container" className="fixed bottom-0 left-0 z-[999]" />
 
       {toasts.length > 0 && (
         <div className="fixed top-20 right-4 z-[300] space-y-2 w-[calc(100vw-2rem)] max-w-xs pointer-events-none">

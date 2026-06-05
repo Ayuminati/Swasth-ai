@@ -4,6 +4,7 @@ import { isValidIndianPhone, isValidAge, sanitizeText } from '../utils/validatio
 import { useApp } from '../contexts/AppContext';
 import { translations } from '../i18n/translations';
 import { loadSymptomHistory, loadAppointments, cancelAppointment, type SymptomRecord, type Appointment } from '../utils/historyStorage';
+import { api } from '../utils/api';
 import OTPModal from '../components/OTPModal';
 
 interface EmergencyContact {
@@ -31,7 +32,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export default function Profile() {
-  const { language } = useApp();
+  const { language, currentUser, signOutUser } = useApp();
   const T = translations[language];
 
   const [showOTPModal, setShowOTPModal] = useState(false);
@@ -62,9 +63,21 @@ export default function Profile() {
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.contacts, JSON.stringify(contacts)); }, [contacts]);
 
   useEffect(() => {
-    setSymptomHistory(loadSymptomHistory());
-    setAppointments(loadAppointments());
-  }, []);
+    const load = async () => {
+      if (currentUser) {
+        const [history, appts] = await Promise.all([
+          api.getHistory().catch(() => null),
+          api.getAppointments().catch(() => null),
+        ]);
+        setSymptomHistory((history as SymptomRecord[] | null) ?? loadSymptomHistory());
+        setAppointments((appts as Appointment[] | null) ?? loadAppointments());
+      } else {
+        setSymptomHistory(loadSymptomHistory());
+        setAppointments(loadAppointments());
+      }
+    };
+    load();
+  }, [currentUser]);
 
   const isPhoneVerified =
     !!userProfile.phone &&
@@ -112,13 +125,16 @@ export default function Profile() {
 
   const removeContact = (id: string) => setContacts(contacts.filter(c => c.id !== id));
 
-  const handleCancelAppointment = (id: string) => {
+  const handleCancelAppointment = async (id: string) => {
+    if (currentUser) {
+      await api.cancelAppointment(id).catch(() => {});
+    }
     cancelAppointment(id);
-    setAppointments(loadAppointments());
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' as const } : a));
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
+  const handleLogout = async () => {
+    await signOutUser();
     window.location.reload();
   };
 

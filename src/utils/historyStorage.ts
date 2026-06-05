@@ -1,4 +1,6 @@
 import type { SymptomAnalysisResult } from './gemini';
+import { auth } from '../config/firebase';
+import { api } from './api';
 
 export interface SymptomRecord {
   id: string;
@@ -42,6 +44,7 @@ export const saveSymptomRecord = (
   symptoms: string,
   result: SymptomAnalysisResult
 ): void => {
+  // Always persist to localStorage immediately (works offline too)
   const history = loadSymptomHistory();
   const record: SymptomRecord = {
     id: Date.now().toString(),
@@ -51,6 +54,15 @@ export const saveSymptomRecord = (
     urgency: result.urgencyLevel,
   };
   localStorage.setItem(KEYS.symptoms, JSON.stringify([record, ...history].slice(0, 20)));
+
+  // If authenticated, also sync to backend (fire-and-forget)
+  if (auth.currentUser) {
+    api.saveHistory({
+      symptoms,
+      result: record.result,
+      urgency: record.urgency,
+    }).catch(() => { /* silent — localStorage is the fallback */ });
+  }
 };
 
 export const loadAppointments = (): Appointment[] =>

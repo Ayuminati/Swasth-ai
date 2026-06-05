@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { X, CalendarPlus, Check, Clock, Phone, User, FileText, AlertCircle, MessageCircle } from 'lucide-react';
+import { X, CalendarPlus, Check, Clock, Phone, User, FileText, AlertCircle, MessageCircle, Loader2 } from 'lucide-react';
 import { saveAppointment, type Appointment } from '../utils/historyStorage';
 import { isValidIndianPhone, sanitizeText } from '../utils/validation';
+import { auth } from '../config/firebase';
+import { api } from '../utils/api';
 
 interface Props {
   doctorName: string;
@@ -20,6 +22,7 @@ export default function AppointmentModal({ doctorName, facility, doctorPhone, on
   const [form, setForm] = useState({ name: '', phone: '', date: '', time: '', reason: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [booked, setBooked] = useState<Appointment | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 86_400_000).toISOString().split('T')[0];
@@ -35,19 +38,33 @@ export default function AppointmentModal({ doctorName, facility, doctorPhone, on
     return Object.keys(e).length === 0;
   };
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!validate()) return;
-    const appt = saveAppointment({
-      doctorName: sanitizeText(doctorName),
-      facility: sanitizeText(facility),
-      patientName: sanitizeText(form.name),
-      phone: form.phone,
-      date: form.date,
-      time: form.time,
-      reason: sanitizeText(form.reason),
-    });
-    setBooked(appt);
-    setStep('success');
+    setSubmitting(true);
+    try {
+      const payload = {
+        doctorName: sanitizeText(doctorName),
+        facility: sanitizeText(facility),
+        patientName: sanitizeText(form.name),
+        phone: form.phone,
+        date: form.date,
+        time: form.time,
+        reason: sanitizeText(form.reason),
+      };
+      let appt: Appointment;
+      if (auth.currentUser) {
+        appt = await api.createAppointment(payload) as Appointment;
+        // keep localStorage in sync
+        const { saveAppointment: saveLs } = await import('../utils/historyStorage');
+        saveLs(payload);
+      } else {
+        appt = saveAppointment(payload);
+      }
+      setBooked(appt);
+      setStep('success');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const buildWhatsAppUrl = (appt: Appointment) => {
@@ -167,9 +184,10 @@ export default function AppointmentModal({ doctorName, facility, doctorPhone, on
 
             <button
               onClick={handleBook}
-              className="w-full bg-medical-600 hover:bg-medical-700 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95 shadow-float"
+              disabled={submitting}
+              className="w-full bg-medical-600 hover:bg-medical-700 text-white font-bold py-3.5 rounded-2xl transition-all active:scale-95 shadow-float disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              Confirm Appointment
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : 'Confirm Appointment'}
             </button>
           </div>
         ) : (

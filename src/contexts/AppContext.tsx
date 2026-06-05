@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import type { User } from 'firebase/auth';
+import { auth } from '../config/firebase';
 import type { Language } from '../i18n/translations';
 
 export interface ToastItem {
@@ -16,6 +19,9 @@ interface AppContextType {
   toasts: ToastItem[];
   showToast: (message: string, type?: ToastItem['type']) => void;
   dismissToast: (id: string) => void;
+  currentUser: User | null;
+  authLoading: boolean;
+  signOutUser: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -27,6 +33,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, user => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
@@ -43,8 +59,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  const signOutUser = useCallback(async () => {
+    await signOut(auth);
+    localStorage.clear();
+  }, []);
+
   return (
-    <AppContext.Provider value={{ language, setLanguage, isAboutModalOpen, setIsAboutModalOpen, toasts, showToast, dismissToast }}>
+    <AppContext.Provider value={{
+      language, setLanguage,
+      isAboutModalOpen, setIsAboutModalOpen,
+      toasts, showToast, dismissToast,
+      currentUser, authLoading, signOutUser,
+    }}>
       {children}
     </AppContext.Provider>
   );
