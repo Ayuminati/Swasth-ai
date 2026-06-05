@@ -120,7 +120,7 @@ The only external calls are:
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/swasth-ai.git
+git clone https://github.com/Ayuminati/Swasth-ai.git
 cd swasth-ai
 npm install
 ```
