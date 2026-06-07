@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import appointmentsRouter from './routes/appointments.js';
 import historyRouter from './routes/history.js';
 import profileRouter from './routes/profile.js';
+import doctorsRouter from './routes/doctors.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'swasth-ai-b
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/doctors', doctorsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
