@@ -2,8 +2,9 @@ import { Router } from 'express';
 
 const router = Router();
 const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
 const SEARCH_RADIUS_M = 5000;
@@ -72,13 +73,9 @@ out body center 40;`.trim();
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const resp = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': USER_AGENT,
-        },
-        body: `data=${encodeURIComponent(query)}`,
+      const resp = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: { 'User-Agent': USER_AGENT },
         signal: controller.signal,
       });
       clearTimeout(tid);

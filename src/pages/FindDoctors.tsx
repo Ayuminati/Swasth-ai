@@ -56,6 +56,8 @@ export default function FindDoctors() {
       try {
         const docs = await searchPlaces();
         setAllDoctors(docs);
+        setError(null);
+        setUsingFallback(true);
       } catch {
         // leave empty
       }
