@@ -1,10 +1,15 @@
 import { Router } from 'express';
 
 const router = Router();
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
 const SEARCH_RADIUS_M = 5000;
 const FETCH_TIMEOUT_MS = 30_000;
 const FALLBACK_LOCATION = { lat: 30.900965, lng: 75.857277 }; // Ludhiana
+const USER_AGENT = 'SwasthAI/1.0 (health app; contact ayusharma17987@gmail.com)';
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -60,20 +65,33 @@ router.get('/', async (req, res) => {
 );
 out body center 40;`.trim();
 
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let upstream = null;
+  let lastStatus = 0;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': USER_AGENT,
+        },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      if (resp.ok) { upstream = resp; break; }
+      lastStatus = resp.status;
+    } catch {
+      clearTimeout(tid);
+    }
+  }
 
   try {
-    const upstream = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(query)}`,
-      signal: controller.signal,
-    });
-    clearTimeout(tid);
-
-    if (!upstream.ok) {
-      return res.status(502).json({ error: `OpenStreetMap API error (${upstream.status})` });
+    if (!upstream) {
+      return res.status(502).json({ error: `OpenStreetMap unavailable (${lastStatus}). Try again shortly.` });
     }
 
     const data = await upstream.json();
@@ -116,10 +134,6 @@ out body center 40;`.trim();
 
     res.json(doctors);
   } catch (err) {
-    clearTimeout(tid);
-    if (err.name === 'AbortError') {
-      return res.status(504).json({ error: 'Request to OpenStreetMap timed out. Please try again.' });
-    }
     res.status(500).json({ error: err.message });
   }
 });
