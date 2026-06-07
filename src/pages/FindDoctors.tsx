@@ -268,10 +268,15 @@ export default function FindDoctors() {
                         <span>{T.doctors.call}</span>
                       </a>
                     ) : (
-                      <span className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 text-slate-400 font-medium px-4 py-2.5 rounded-xl text-sm cursor-not-allowed">
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(doctor.name + ' phone number')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
+                      >
                         <Phone className="w-4 h-4" />
-                        <span>No number</span>
-                      </span>
+                        <span>Find number</span>
+                      </a>
                     )}
                     <a
                       href={`https://www.google.com/maps/dir/?api=1&destination=${doctor.lat},${doctor.lng}`}
